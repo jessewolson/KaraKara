@@ -295,6 +295,11 @@ def main(global_config, **settings):
     config.add_route('comunity_settings', append_format_pattern('/comunity/settings'))
     config.add_route('comunity_processmedia_log', append_format_pattern('/comunity/processmedia_log'))
 
+    settings["pyramid_web20.global_config"] = global_config
+    config.add_route('notebook_proxy', '/notebook/proxy')
+    config.add_route('admin_shell', '/notebook/admin_shell')
+    config.add_route('shutdown_notebook', '/notebook/shutdown')
+
     #config.add_route('search_tags'   , '/search_tags/{tags:.*}')
     #config.add_route('search_list'   , '/search_list/{tags:.*}')
 

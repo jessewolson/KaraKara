@@ -18,6 +18,31 @@ pyramid.default_locale_name = en
 i18n.translation_dirs = ../data/locale
 i18n.available_languages = [en]
 
+# Jupyter Notebook -------------------------------------------------------------
+
+# Where we store IPython Notebook runtime and persistent files
+# (pid, saved notebooks, etc.).
+# Each user will get a personal subfolder in this folder
+pyramid_notebook.notebook_folder = /tmp/pyramid_notebook
+
+# Automatically shutdown IPython Notebook kernel
+# after his many seconds have elapsed since startup
+pyramid_notebook.kill_timeout = 3600
+
+# Websocket proxy launch function.
+# This is a view function that upgrades the current HTTP request to Websocket (101 upgrade protocol)
+# and starts the web server websocket proxy loop. Currently only uWSGI supported
+# (see below).
+pyramid_notebook.websocket_proxy =
+
+# For uWSGI in production
+# pyramid_notebook.websocket_proxy = pyramid_notebook.uwsgi.serve_websocket
+
+# If you need to server websockets from alternative domain (See below).
+# Example value: https://ws.example.com
+pyramid_notebook.alternative_domain =
+
+
 # Karaoke settings -------------------------------------------------------------
 karakara.server.mode = development
 
