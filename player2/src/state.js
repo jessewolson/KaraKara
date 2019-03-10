@@ -7,6 +7,8 @@ import {get_lyrics, api} from "./util";
 
 const QueueItemStatus = {
     PENDING: "pending",
+    PAUSED: "paused",
+    PLAYING: "playing",
     PLAYED: "played",
     SKIPPED: "skipped",
     REMOVED: "removed",
@@ -21,6 +23,9 @@ const state = {
     // global app bits
     connected: false,
     audio_allowed: (new AudioContext()).state === "running",
+    socket: null,
+
+    // managed by check_settings / set_settings
     settings: {
         "karakara.player.title"               : "KaraKara",
         "karakara.player.theme"               : "metalghosts",
@@ -32,17 +37,14 @@ const state = {
         "karakara.podium.video_lag"           : 0.50,  // adjust to get podium and projector in sync
         "karakara.podium.soft_sub_lag"        : 0.35,  // adjust to get soft-subs and hard-subs in sync
     },
-    socket: null,
 
-    // title screen
+    // managed by check_images / set_images
     images: [],
 
-    // playlist screen
+    // managed by check_queue / set_queue
     queue: [],
 
-    // video screen
-    playing: false,
-    paused: false,
+    // managed by set_progress (called from video.onTimeUpdate)
     progress: 0,
 };
 
@@ -56,12 +58,30 @@ const actions = {
     get_state: () => state => state,
     set_socket: value => () => ({ socket: value }),
     set_connected: value => () => ({ connected: value }),
+    set_progress: value => () => ({ progress: value }),
+
+    // handle settings updates
     check_settings: () => (state, actions) => {
         api(state, "GET", "settings", {}, function(data) {
             actions.set_settings(Object.assign(state.settings, data.settings));
         });
     },
     set_settings: value => () => ({ settings: value }),
+
+    // handle playlist updates
+    check_queue: () => (state, actions) => {
+        api(state, "GET", "queue_items", {}, function(data) {
+            function merge_lyrics(item) {
+                item.track.lyrics = get_lyrics(state, item.track);
+                return item;
+            }
+            let queue_with_lyrics = data.queue.map((item) => merge_lyrics(item));
+            actions.set_queue(queue_with_lyrics);
+        });
+    },
+    set_queue: value => (state, actions) => ({ queue: value }),
+
+    // thumbnail rain data fetching
     check_images: () => (state, actions) => {
         api(state, "GET", "random_images", {count: 25}, function(data) {
             let n=0;
@@ -76,85 +96,16 @@ const actions = {
     },
     set_images: value => () => ({ images: value }),
 
-    // current track controls
-    play: () => (state) => ({
-        playing: true,
-        // if we're already playing, leave the state alone;
-        // if we're starting a new song, start it un-paused from 0s
-        paused: state.playing ? state.paused : false,
-        progress: state.playing ? state.progress : 0,
-    }),
-    pause: () => (state) => {
-        const video = document.getElementsByTagName("video")[0];
-        if (video) {
-            if (state.paused) {video.play();}
-            else              {video.pause();}
-        }
-        return { paused: !state.paused };
-    },
-    stop: () => () => ({
-        playing: false,
-        paused: false,
-        progress: 0,
-    }),
-    set_progress: value => () => ({ progress: value }),
-    seek_forwards: value => (state, actions) => {
-        const skip = value || state.settings["karakara.player.video.skip.seconds"];
-        const video = document.getElementsByTagName("video")[0];
-        if(video) video.currentTime += skip;
-        return { progress: state.progress + skip };
-    },
-    seek_backwards: value => (state, actions) => {
-        const skip = value || state.settings["karakara.player.video.skip.seconds"];
-        const video = document.getElementsByTagName("video")[0];
-        if(video) video.currentTime -= skip;
-        return { progress: state.progress - skip };
-    },
-
-    // playlist controls
-    check_queue: () => (state, actions) => {
-        api(state, "GET", "queue_items", {}, function(data) {
-            function merge_lyrics(item) {
-                item.track.lyrics = get_lyrics(state, item.track);
-                return item;
-            }
-            let queue_with_lyrics = data.queue.map((item) => merge_lyrics(item));
-            actions.set_queue(queue_with_lyrics);
-        });
-    },
-    set_queue: value => (state, actions) => {
-        // if the first song in the queue has changed, stop playing
-        if(state.queue.length === 0 || value.length === 0 || state.queue[0].id !== value[0].id) {
-            return { queue: value, playing: false, paused: false, progress: 0 };
-        }
-        else {
-            return { queue: value };
-        }
-    },
-    dequeue: () => state => ({
-        // remove the first song
-        queue: state.queue.slice(1),
-        // and stop playing (same as .stop(), but we
-        // want to do it all in a single state update
-        // to avoid rendering an incomplete state)
-        playing: false,
-        paused: false,
-        progress: 0,
-    }),
-
     // Tell the network what to do
-    send: value => (state, actions) => {
-        console.log("websocket_send("+ value +")");
-        state.socket.send(value);
-    },
     set_track_status: value => (state, actions) => {
-        actions.dequeue();
         api(state, "PUT", "queue_items", {
             "queue_item.id": state.queue[0].id,
             "status": value,
             "uncache": new Date().getTime()
         }, function(data) {
-            actions.check_queue();
+            // Server should broadcast a queue-update message, let's
+            // wait and get that at the same time as everyone else
+            // actions.check_queue();
         });
     },
 };

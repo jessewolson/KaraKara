@@ -44,7 +44,13 @@ def invalidate_cache(request, track_id):
     request.send_websocket_message('queue_updated')
 
 def _queue_query(queue_id):
-    return DBSession.query(QueueItem).filter(QueueItem.queue_id==queue_id).filter(QueueItem.status=='pending').order_by(QueueItem.queue_weight)
+    return (
+        DBSession
+            .query(QueueItem)
+            .filter(QueueItem.queue_id==queue_id)
+            .filter(QueueItem.status in ['pending', 'paused', 'playing'])
+            .order_by(QueueItem.queue_weight)
+    )
 
 def _queue_items_dict_with_track_dict(queue_query):
     queue_dicts = [queue_item.to_dict('full') for queue_item in queue_query]
@@ -394,11 +400,34 @@ def queue_item_update(request):
     # Update any params to the db
     if 'status' in params:
         try:
-            status = QueueItemStatus(params['status'])
-        except:
+            new_status = QueueItemStatus(params['status'])
+        except ValueError:
             raise action_error(message=f'invalid queue_item.status {params["status"]} - valid values are {QueueItemStatus.__members__}', code=400)
-        queue_item.status = status
         del params['status']
+
+        # When going from "paused" to "playing", keep the same
+        # offset from the start of the track, so that we carry
+        # on from where we left off
+        if queue_item.status == QueueItemStatus.PAUSED and new_status == QueueItemStatus.PLAYING:
+            queue_item.time_started = datetime.datetime.now() - (queue_item.time_touched - queue_item.time_started)
+
+        # when we begin playing (not if we are already playing),
+        # make a note of the timestamp so that everybody can agree
+        elif queue_item.status != QueueItemStatus.PLAYING and new_status == QueueItemStatus.PLAYING:
+            queue_item.time_started = datetime.datetime.now()
+
+        # when we go from "playing" to "paused", remember the
+        # start time, so that we can know how far into the track
+        # we were when we paused
+        elif queue_item.status == QueueItemStatus.PLAYING and new_status == QueueItemStatus.PAUSED:
+            pass
+
+        # if we are anything other than "playing" or "paused",
+        # wipe the start timestamp
+        else:
+            queue_item.time_started = None
+
+        queue_item.status = new_status
 
     for key, value in params.items():
         if hasattr(queue_item, key):

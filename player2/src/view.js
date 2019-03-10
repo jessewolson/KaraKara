@@ -23,7 +23,7 @@ const show_tracks = 5;
 function _lineStyle(item, state) {
     // show subs a little faster, to counteract podium lag
     const ts = state.progress + state.settings["karakara.podium.soft_sub_lag"];
-    if(!state.playing) return "future";
+    if(state.queue[0].status !== QueueItemStatus.PLAYING) return "future";
     if(item.text === "-") return "past";
     if(item.start < ts && item.end > ts) return "present";
     if(item.end < ts) return "past";
@@ -166,15 +166,14 @@ const PodiumScreen = ({state, actions}) => (
          */}
         <div className="preview_holder">
             <video src={get_attachment(state, state.queue[0].track, 'preview')}
-                   ontimeupdate={(e) => state.playing ? actions.set_progress(e.target.currentTime) : null}
-                   onended={() => actions.dequeue()}
-                   autoPlay={true} muted={!state.playing}
-                   key={state.playing}
+                   ontimeupdate={(e) => (state.queue[0].status === QueueItemStatus.PLAYING) ? actions.set_progress(e.target.currentTime) : null}
+                   autoPlay={true} muted={true}
+                   key={state.queue[0].status === QueueItemStatus.PLAYING}
             />
         </div>
         <Lyrics state={state} />
 
-        {state.playing ?
+        {state.queue[0].status === QueueItemStatus.PLAYING ?
             <div className={"progressBar"}
                  style={{"background-position": (100 - (state.progress / state.queue[0].track.duration * 100))+"%"}}>
                 Track Playing
@@ -184,7 +183,7 @@ const PodiumScreen = ({state, actions}) => (
                     {s_to_mns(state.queue[0].track.duration)}
                 )</small>
             </div> :
-            <div className={"startButton"} onclick={() => actions.send("play")}
+            <div className={"startButton"} onclick={() => actions.set_track_status("playing")}
                  style={{"background-position": (100 - (state.progress / state.settings["karakara.player.autoplay"] * 100))+"%"}}>
                 <span>
                     Press to Start
@@ -209,9 +208,9 @@ function view(state, actions) {
         screen = <TitleScreen state={state} actions={actions} />;
     else if(is_podium())
         screen = <PodiumScreen state={state} actions={actions} />;
-    else if(state.queue.length > 0 && !state.playing)
+    else if(state.queue.length > 0 && state.queue[0].status !== QueueItemStatus.PLAYING)
         screen = <PreviewScreen state={state} actions={actions} />;
-    else if(state.queue.length > 0 && state.playing)
+    else if(state.queue.length > 0 && state.queue[0].status === QueueItemStatus.PLAYING)
         screen = <VideoScreen state={state} actions={actions} />;
 
     return <div className={"theme-" + state.settings["karakara.player.theme"] + get_theme_var()}>

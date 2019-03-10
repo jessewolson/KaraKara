@@ -17,10 +17,11 @@ __all__ = [
 
 class QueueItemStatus(enum.Enum):
     PENDING = "pending"
+    PAUSED = "paused"
+    PLAYING = "playing"
     PLAYED = "played"
     SKIPPED = "skipped"
     REMOVED = "removed"
-
 
 
 class Queue(Base):
@@ -77,6 +78,7 @@ class QueueItem(Base):
 
     time_added = Column(DateTime(), nullable=False, default=now)
     time_touched = Column(DateTime(), nullable=False, default=now)
+    time_started = Column(DateTime(), nullable=True, default=None)
 
     status = Column(Enum(QueueItemStatus, name="status_types"), nullable=False, default="pending")
 
@@ -92,6 +94,7 @@ class QueueItem(Base):
             'performer_name': None,
             'time_touched': None,
             'time_added': None,
+            'time_started': None,
             'queue_weight': None,
         },
     })
