@@ -160,7 +160,7 @@ $LIGHT: #29EDF2;
 
 			/* playlist detail */
 			li {
-				position: relative;
+				position: absolute;
 				list-style-type: none;
 				margin-bottom: 2vh;
 				@include border;
@@ -203,19 +203,21 @@ $LIGHT: #29EDF2;
 					color: #aaa;
 					font-size: 0.9em;
 				}
+
+				transition: top 0.5s, font-size 0.5s, width 0.5s;
 			}
-			li:nth-child(1) {animation-delay: 0.0s;}
-			li:nth-child(2) {animation-delay: 0.2s;}
-			li:nth-child(3) {animation-delay: 0.3s;}
-			li:nth-child(4) {animation-delay: 0.4s;}
-			li:nth-child(5) {animation-delay: 0.5s;}
-			li:nth-child(6) {animation-delay: 0.6s;}
-			li:nth-child(7) {animation-delay: 0.7s;}
-			li:nth-child(8) {animation-delay: 0.8s;}
-			li:nth-child(9) {animation-delay: 0.9s;}
+			li:nth-child(1) {animation-delay: 0.0s; top: 0vh;}
+			li:nth-child(2) {animation-delay: 0.2s; top: 24vh;}
+			li:nth-child(3) {animation-delay: 0.3s; top: 38vh;}
+			li:nth-child(4) {animation-delay: 0.4s; top: 52vh;}
+			li:nth-child(5) {animation-delay: 0.5s; top: 66vh;}
+			li:nth-child(6) {animation-delay: 0.6s; top: 80vh;}
+			li:nth-child(7) {animation-delay: 0.7s; top: 94vh;}
+			li:nth-child(8) {animation-delay: 0.8s; top: 108vh;}
+			li:nth-child(9) {animation-delay: 0.9s; top: 122vh;}
 
 			li:nth-child(1) {
-				width: auto;
+				width: 96vw;
 				height: 22vh;
 				font-size: 2em;
 			}
